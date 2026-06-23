@@ -454,7 +454,7 @@ input[type="text"].time-inp.err { border-color: rgba(192,57,43,0.4); color: var(
         </div>
         <span class="house-icon">🏠</span>
       </div>
-      <span class="week-summary"><span class="done" id="week-done">0:00</span> / <span id="week-target2">40</span>h</span>
+      <span class="week-summary"><span class="done" id="week-done">0:00</span><span id="week-done-decimal" style="font-size:11px;color:var(--text-faint);margin-left:3px;">(0.00h)</span> / <span id="week-target2">40</span>h</span>
 
     </div>
     <div class="toolbar-right">
@@ -742,7 +742,7 @@ function calc() {
     }
   });
 
-  // Halfday pass: out 시간 자동 계산 및 입력
+  // Halfday pass: out 시간 자동 계산 (비어있을 때만) / 사용자 입력값 우선
   let halfdayFilled = false;
   ALL_IDS.forEach(id => {
     const status = document.getElementById(`${id}-status`).value;
@@ -750,11 +750,18 @@ function calc() {
     const inV   = document.getElementById(`${id}-in`).value;
     const outEl = document.getElementById(`${id}-out`);
     if (!inV) return;
-    const workNeeded = Math.min(Math.max(effectiveTarget - nonHalfdayWork, 0), 4 * 60);
-    const departTime = fmtClock(toMin(inV) + workNeeded);
-    if (outEl.value !== departTime) { outEl.value = departTime; halfdayFilled = true; }
-    outEl.classList.remove('placeholder', 'err');
-    dayWork[id] = workNeeded;
+    const hasUserOut = outEl.value && !outEl.classList.contains('placeholder');
+    if (!hasUserOut) {
+      const workNeeded = Math.min(Math.max(effectiveTarget - nonHalfdayWork, 0), 4 * 60);
+      const departTime = fmtClock(toMin(inV) + workNeeded);
+      outEl.value = departTime;
+      outEl.classList.remove('placeholder', 'err');
+      halfdayFilled = true;
+      dayWork[id] = workNeeded;
+    } else {
+      const work = toMin(outEl.value) - toMin(inV);
+      if (work > 0) dayWork[id] = work;
+    }
   });
 
   const totalWork = Object.values(dayWork).reduce((a, b) => a + b, 0);
@@ -822,6 +829,7 @@ function calc() {
   const pct = Math.min(Math.round((totalWork / effectiveTarget) * 100), 100);
   document.getElementById('week-bar').style.width   = pct + '%';
   document.getElementById('week-done').textContent   = fmtDur(totalWork);
+  document.getElementById('week-done-decimal').textContent = totalWork > 0 ? `(${(totalWork / 60).toFixed(2)}h)` : '';
   document.getElementById('week-target2').textContent = effectiveTarget / 60;
 }
 
