@@ -694,18 +694,13 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
   letter-spacing: 0.04em;
 }
 
-/* bus-btn-mobile: 기본 숨김, 600px 이하에서만 표시 */
-.bus-btn-mobile { display: none; }
-
 @media (max-width: 600px) {
   body { padding: 24px 12px 60px; }
 
-  .bus-btn-mobile { display: inline-flex; margin-left: auto; }
-  .btn-reset { display: none; }
   .run-icon, .house-icon, #week-done-decimal { display: none; }
 
-  /* quick-links 숨김 (통근버스는 toolbar 2행으로 이동) */
-  .quick-links { display: none; }
+  /* quick-links: 통근버스 + 이미지 업로드만 표시 */
+  .quick-links > *:not(:first-child):not(.btn-img-upload) { display: none; }
 
   /* summary bar */
   .summary-bar { flex-direction: column; align-items: flex-start; }
@@ -775,10 +770,9 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
         <span class="house-icon">🏠</span>
       </div>
       <span class="week-summary"><span class="done" id="week-done">0:00</span><span id="week-done-decimal" style="font-size:11px;color:var(--ink-400);margin-left:3px;">(0.00h)</span> / <span id="week-target2">40</span>h</span>
-      <button class="tb-btn bus-btn-mobile" onclick="openBusModal()">통근버스</button>
     </div>
     <div class="toolbar-right">
-      <button class="tb-btn btn-reset" onclick="openBulkModal()">↺ 리셋</button>
+      <button class="tb-btn" onclick="openBulkModal()">↺ 리셋</button>
     </div>
   </div>
 
@@ -804,7 +798,7 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
     <a class="tb-btn" id="btn-ehr"  href="#" target="_blank"><span id="label-ehr">eHR</span></a>
     <button class="tb-btn" onclick="openLinkModal()" style="padding:7px 10px;color:var(--ink-500);" title="링크 수정">⚙</button>
     <div class="tb-sep"></div>
-    <button class="tb-btn" onclick="openImageModal()">이미지 업로드</button>
+    <button class="tb-btn btn-img-upload" onclick="openImageModal()">이미지 업로드</button>
     <input type="file" id="img-upload" accept="image/*" style="display:none">
     <span id="ocr-status" style="display:none;"></span>
   </div>
