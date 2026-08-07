@@ -61,6 +61,9 @@ body {
   padding: 32px 20px 60px;
 }
 
+/* 모달 열릴 때 배경 스크롤 잠금 */
+body:has(.modal-bg.open) { overflow: hidden; }
+
 /* 제목 */
 .page-title-row {
   display: flex;
@@ -697,12 +700,9 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
 @media (max-width: 600px) {
   body { padding: 24px 12px 60px; }
 
-  /* toolbar 2행 */
-  .toolbar { flex-wrap: wrap; row-gap: 8px; }
-  .toolbar-left { flex: 1 0 100%; }
-  .toolbar-right { width: 100%; justify-content: flex-start; }
-  .bus-btn-mobile { display: inline-flex; }
+  .bus-btn-mobile { display: inline-flex; margin-left: auto; }
   .btn-reset { display: none; }
+  .run-icon, .house-icon, #week-done-decimal { display: none; }
 
   /* quick-links 숨김 (통근버스는 toolbar 2행으로 이동) */
   .quick-links { display: none; }
@@ -711,14 +711,14 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
   .summary-bar { flex-direction: column; align-items: flex-start; }
   .summary-right { align-items: flex-start; }
 
-  /* compact table (총근무시간 숨김, 5열 고정폭) */
+  /* compact table: 요일(26) 상태(74) 출근(1fr) 퇴근(1fr) 퇴근가능(76) */
   .tbl-head, .day-row {
-    grid-template-columns: 30px 78px 72px 72px 80px;
-    padding: 7px 12px;
+    grid-template-columns: 26px 74px 1fr 1fr 76px;
+    padding: 7px 10px;
   }
   .tbl-head .th:nth-child(5), .hours-badge { display: none; }
-  input[type="text"].time-inp { width: 100%; font-size: 12.5px; }
-  select.status-sel { width: 70px; font-size: 12px; padding-left: 7px; }
+  input[type="text"].time-inp { width: 62px; font-size: 12.5px; }
+  select.status-sel { width: 66px; font-size: 12px; padding-left: 6px; }
   .row-sep { display: none; }
 }
 
@@ -774,9 +774,9 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
         <span class="house-icon">🏠</span>
       </div>
       <span class="week-summary"><span class="done" id="week-done">0:00</span><span id="week-done-decimal" style="font-size:11px;color:var(--ink-400);margin-left:3px;">(0.00h)</span> / <span id="week-target2">40</span>h</span>
+      <button class="tb-btn bus-btn-mobile" onclick="openBusModal()">통근버스</button>
     </div>
     <div class="toolbar-right">
-      <button class="tb-btn bus-btn-mobile" onclick="openBusModal()">통근버스</button>
       <button class="tb-btn btn-reset" onclick="openBulkModal()">↺ 리셋</button>
     </div>
   </div>
