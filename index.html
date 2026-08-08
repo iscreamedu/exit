@@ -285,7 +285,8 @@ input[type="text"].time-inp {
 
 input[type="text"].time-inp:hover { border-color: var(--ink-300); }
 input[type="text"].time-inp:focus { border-color: var(--orange-600); box-shadow: var(--shadow-glow); }
-input[type="text"].time-inp.placeholder { color: var(--ink-400); }
+input[type="text"].time-inp.placeholder { color: color-mix(in srgb, var(--ink-400) 40%, var(--paper)); }
+input[type="text"].time-inp::placeholder { color: color-mix(in srgb, var(--ink-400) 40%, var(--paper)); }
 input[type="text"].time-inp.err { border-color: var(--danger); color: var(--danger); }
 
 /* hours badge */
@@ -400,6 +401,35 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
   padding: 3px 10px;
   border-radius: var(--r-pill);
 }
+
+/* ── 퇴근 플랜 바 ── */
+.plan-bar {
+  margin-top: 10px;
+  background: var(--paper);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--r-lg);
+  padding: 14px 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.plan-bar-label { font-size: 12px; font-weight: 600; color: var(--ink-500); white-space: nowrap; }
+.plan-chips { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.plan-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--orange-50);
+  border: 1px solid var(--orange-100);
+  border-radius: var(--r-pill);
+  padding: 4px 10px;
+}
+.plan-chip-day { font-size: 12px; font-weight: 600; color: var(--ink-500); }
+.plan-chip-time { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--orange-700); }
+.plan-chip-arrow { color: var(--ink-300); font-size: 12px; }
+.plan-bar-note { font-size: 11px; color: var(--danger); font-family: var(--font-mono); }
 
 /* ── Modals ── */
 .modal-bg {
@@ -772,6 +802,7 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
       <span class="week-summary"><span class="done" id="week-done">0:00</span><span id="week-done-decimal" style="font-size:11px;color:var(--ink-400);margin-left:3px;">(0.00h)</span> / <span id="week-target2">40</span>h</span>
     </div>
     <div class="toolbar-right">
+      <button class="tb-btn" onclick="openLinkModal()">설정</button>
       <button class="tb-btn" onclick="openBulkModal()">↺ 리셋</button>
     </div>
   </div>
@@ -789,6 +820,13 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
     <div class="day-rows" id="day-rows"></div>
   </div>
 
+  <!-- 퇴근 플랜 -->
+  <div class="plan-bar" id="plan-bar" style="display:none;">
+    <span class="plan-bar-label">퇴근 플랜</span>
+    <div class="plan-chips" id="plan-chips"></div>
+    <span class="plan-bar-note" id="plan-bar-note"></span>
+  </div>
+
   <!-- 바로가기 -->
   <div class="quick-links">
     <button class="tb-btn" onclick="openBusModal()">통근버스</button>
@@ -796,7 +834,6 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
     <a class="tb-btn" id="btn-jira" href="#" target="_blank"><span id="label-jira">지라</span></a>
     <a class="tb-btn" id="btn-bus"  href="#" target="_blank"><span id="label-bus">버스</span></a>
     <a class="tb-btn" id="btn-ehr"  href="#" target="_blank"><span id="label-ehr">eHR</span></a>
-    <button class="tb-btn" onclick="openLinkModal()" style="padding:7px 10px;color:var(--ink-500);" title="링크 수정">⚙</button>
     <div class="tb-sep"></div>
     <button class="tb-btn btn-img-upload" onclick="openImageModal()">이미지 업로드</button>
     <input type="file" id="img-upload" accept="image/*" style="display:none">
@@ -809,15 +846,29 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
 <!-- Link modal -->
 <div class="modal-bg" id="link-modal">
   <div class="modal">
-    <h2>바로가기 링크 수정</h2>
-    <p style="font-size:12px;color:var(--ink-500);margin-bottom:14px;">버튼 이름과 URL을 수정할 수 있어요.</p>
+    <h2>설정</h2>
+    <p style="font-size:12px;font-weight:600;color:var(--ink-500);margin-bottom:8px;">바로가기 링크</p>
     <div style="display:grid;grid-template-columns:1fr 2fr;gap:6px;margin-bottom:6px;">
-      <div style="font-size:12px;font-weight:600;color:var(--ink-500);padding:0 2px;">버튼 이름</div>
-      <div style="font-size:12px;font-weight:600;color:var(--ink-500);padding:0 2px;">URL</div>
+      <div style="font-size:12px;color:var(--ink-400);padding:0 2px;">버튼 이름</div>
+      <div style="font-size:12px;color:var(--ink-400);padding:0 2px;">URL</div>
     </div>
     <div class="modal-row"><input type="text" id="lname-jira" placeholder="지라" style="width:80px;flex:none;"><input type="text" id="link-jira" placeholder="https://..."></div>
     <div class="modal-row"><input type="text" id="lname-bus"  placeholder="버스" style="width:80px;flex:none;"><input type="text" id="link-bus"  placeholder="https://..."></div>
     <div class="modal-row"><input type="text" id="lname-ehr"  placeholder="eHR"  style="width:80px;flex:none;"><input type="text" id="link-ehr"  placeholder="https://..."></div>
+    <hr style="border:none;border-top:1px solid var(--ink-100);margin:16px 0 12px;">
+    <p style="font-size:12px;font-weight:600;color:var(--ink-500);margin-bottom:8px;">기본 설정</p>
+    <div class="modal-row" style="align-items:center;">
+      <span style="font-size:13px;color:var(--ink);flex:1;">기본 출근시간</span>
+      <input type="text" class="time-inp" id="setting-default-in" placeholder="09:00" inputmode="numeric">
+    </div>
+    <div class="modal-row" style="align-items:center;">
+      <span style="font-size:13px;color:var(--ink);flex:1;">기본 퇴근시간</span>
+      <input type="text" class="time-inp placeholder" id="setting-default-out" placeholder="자동" inputmode="numeric">
+    </div>
+    <div class="modal-row" style="align-items:center;">
+      <span style="font-size:13px;color:var(--ink);flex:1;">금요일 조기퇴근 목표</span>
+      <input type="text" class="time-inp" id="setting-fri-cap" placeholder="16:00" inputmode="numeric">
+    </div>
     <div class="modal-actions">
       <button class="modal-btn" onclick="closeLinkModal()">취소</button>
       <button class="modal-btn primary" onclick="saveLinkModal()">저장</button>
@@ -912,12 +963,10 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
 <div class="modal-bg" id="bulk-modal">
   <div class="modal">
     <h2>리셋</h2>
-    <p>출퇴근 시간을 설정하고 근무 상태를 초기화합니다.</p>
-    <div class="modal-row"><label>출근</label><input type="time" id="bulk-in"  value="09:00"></div>
-    <div class="modal-row"><label>퇴근</label><input type="time" id="bulk-out" value="18:00"></div>
+    <p>이번 주 출퇴근 기록을 모두 초기화합니다.</p>
     <div class="modal-actions">
       <button class="modal-btn" onclick="closeBulkModal()">취소</button>
-      <button class="modal-btn primary" onclick="applyBulk()">적용</button>
+      <button class="modal-btn primary" onclick="applyBulk()">초기화</button>
     </div>
   </div>
 </div>
@@ -928,9 +977,13 @@ const ALL_IDS    = ['mon','tue','wed','thu','fri'];
 const LABELS     = { mon:'월', tue:'화', wed:'수', thu:'목', fri:'금' };
 const STORE_KEY  = 'kaltoe_v2';
 const LINK_KEY   = 'kaltoe_links_v1';
-const BULK_KEY   = 'kaltoe_bulk_v1';
-const LUNCH_MINS = 60;
-const TARGET     = 40 * 60;
+const BULK_KEY    = 'kaltoe_bulk_v1';
+const FRI_CAP_KEY    = 'kaltoe_fri_cap_v1';
+const DEFAULT_IN_KEY  = 'kaltoe_default_in_v1';
+const DEFAULT_OUT_KEY = 'kaltoe_default_out_v1';
+const LUNCH_MINS  = 60;
+const TARGET      = 40 * 60;
+const MAX_CHECKOUT = 21 * 60; // 최대 퇴근 시각 21:00
 
 const STATUS_OPTS = [
   { value:'normal',  label:'없음',  deduct:0 },
@@ -990,6 +1043,7 @@ function makeTimeInput(id, placeholder, defaultVal) {
   inp.value = defaultVal || '';
   inp.placeholder = placeholder;
   inp.maxLength = 5;
+  inp.inputMode = 'numeric';
 
   inp.addEventListener('focus', () => {
     if (inp.classList.contains('placeholder')) inp.value = '';
@@ -1237,6 +1291,108 @@ function calc() {
   document.getElementById('week-done').textContent   = fmtDur(totalWork);
   document.getElementById('week-done-decimal').textContent = totalWork > 0 ? `(${(totalWork / 60).toFixed(2)}h)` : '';
   document.getElementById('week-target2').textContent = effectiveTarget / 60;
+  calcRecommended();
+}
+
+/* ── 퇴근 플랜 ── */
+function getFriCap() {
+  try { const r = localStorage.getItem(FRI_CAP_KEY); return r ? parseInt(r, 10) : 16 * 60; } catch(e) { return 16 * 60; }
+}
+function saveFriCap(mins) {
+  try { localStorage.setItem(FRI_CAP_KEY, mins); } catch(e) {}
+}
+
+function calcRecommended() {
+  const bar    = document.getElementById('plan-bar');
+  const chips  = document.getElementById('plan-chips');
+  const noteEl = document.getElementById('plan-bar-note');
+
+  // 남은 필요 근무 시간
+  let totalDeduct = 0;
+  ALL_IDS.forEach(id => { totalDeduct += getDeduct(id); });
+  const effectiveTarget = TARGET - totalDeduct;
+
+  let workedSoFar = 0;
+  ALL_IDS.forEach(id => {
+    const status = document.getElementById(`${id}-status`).value;
+    if (status === 'dayoff' || status === 'holiday') return;
+    const inEl  = document.getElementById(`${id}-in`);
+    const outEl = document.getElementById(`${id}-out`);
+    if (!outEl.value || outEl.classList.contains('placeholder')) return;
+    const raw = toMin(outEl.value) - toMin(inEl.value) - LUNCH_MINS;
+    if (raw > 0) workedSoFar += raw;
+  });
+
+  const remaining = effectiveTarget - workedSoFar;
+
+  // 아직 퇴근 시간 없는 날
+  const remainIds = ALL_IDS.filter(id => {
+    const st = document.getElementById(`${id}-status`).value;
+    if (st === 'dayoff' || st === 'holiday') return false;
+    const outEl = document.getElementById(`${id}-out`);
+    return !outEl.value || outEl.classList.contains('placeholder');
+  });
+
+  if (remaining <= 0 || remainIds.length === 0) { bar.style.display = 'none'; return; }
+
+  // 배분
+  const friCap   = getFriCap();
+  const allocs   = {};
+  const nonFriIds = remainIds.filter(id => id !== 'fri');
+
+  // 각 날의 체크인 기준 최대 근무 분 (21시 초과 불가)
+  function dayMaxMins(id) {
+    const inEl  = document.getElementById(`${id}-in`);
+    const inMin = (inEl.value && !inEl.classList.contains('placeholder')) ? toMin(inEl.value) : 9 * 60;
+    return Math.max(0, MAX_CHECKOUT - inMin - LUNCH_MINS);
+  }
+
+  let friAlloc = 0;
+  if (remainIds.includes('fri')) {
+    const friInEl = document.getElementById('fri-in');
+    const friIn   = (friInEl.value && !friInEl.classList.contains('placeholder')) ? toMin(friInEl.value) : 9 * 60;
+    const friMax  = Math.max(0, friCap - friIn - LUNCH_MINS);
+    friAlloc = Math.min(friMax, dayMaxMins('fri'), remaining);
+  }
+
+  let otherNeeded = remaining - friAlloc;
+  if (nonFriIds.length > 0) {
+    const perDay = Math.min(Math.ceil(otherNeeded / nonFriIds.length), Math.max(...nonFriIds.map(dayMaxMins)));
+    let left = otherNeeded;
+    nonFriIds.forEach((id, i) => {
+      const a = (i === nonFriIds.length - 1) ? Math.min(left, dayMaxMins(id)) : Math.min(perDay, dayMaxMins(id), left);
+      allocs[id] = Math.max(0, a);
+      left -= allocs[id];
+    });
+  }
+  if (remainIds.includes('fri')) allocs['fri'] = friAlloc;
+
+  // 렌더
+  chips.innerHTML = '';
+  let overflow = false;
+  const totalAlloc = Object.values(allocs).reduce((a, b) => a + b, 0);
+  if (totalAlloc < remaining - 1) overflow = true;
+
+  remainIds.forEach((id, i) => {
+    const inEl   = document.getElementById(`${id}-in`);
+    const inMins = (inEl.value && !inEl.classList.contains('placeholder')) ? toMin(inEl.value) : 9 * 60;
+    const checkoutMins = inMins + (allocs[id] || 0) + LUNCH_MINS;
+
+    const chip = document.createElement('div');
+    chip.className = 'plan-chip';
+    chip.innerHTML = `<span class="plan-chip-day">${LABELS[id]}</span><span class="plan-chip-time">${fmtClock(checkoutMins)}</span>`;
+    chips.appendChild(chip);
+
+    if (i < remainIds.length - 1) {
+      const arr = document.createElement('span');
+      arr.className = 'plan-chip-arrow';
+      arr.textContent = '→';
+      chips.appendChild(arr);
+    }
+  });
+
+  noteEl.textContent = overflow ? `⚠ 남은 ${fmtDur(remaining)}을 21시 안에 다 못 채워요` : '';
+  bar.style.display = 'flex';
 }
 
 /* ── localStorage ── */
@@ -1307,6 +1463,19 @@ function openLinkModal() {
       document.getElementById('lname-ehr').value  = l.nameEhr  || '';
     }
   } catch(e) {}
+  // load settings
+  const setInp = (id, val) => {
+    const el = document.getElementById(id);
+    if (val) { el.value = val; el.classList.remove('placeholder'); }
+    else      { el.value = '';  el.classList.add('placeholder'); }
+  };
+  try {
+    const defIn  = localStorage.getItem(DEFAULT_IN_KEY);
+    setInp('setting-default-in',  defIn  ? fmtClock(parseInt(defIn,  10)) : '09:00');
+    const defOut = localStorage.getItem(DEFAULT_OUT_KEY);
+    setInp('setting-default-out', defOut ? fmtClock(parseInt(defOut, 10)) : null);
+  } catch(e) {}
+  setInp('setting-fri-cap', fmtClock(getFriCap()));
   document.getElementById('link-modal').classList.add('open');
 }
 
@@ -1328,6 +1497,15 @@ function saveLinkModal() {
   document.getElementById('label-jira').textContent = l.nameJira || '지라';
   document.getElementById('label-bus').textContent  = l.nameBus  || '버스';
   document.getElementById('label-ehr').textContent  = l.nameEhr  || 'eHR';
+  // save settings
+  const getVal = id => { const el = document.getElementById(id); return el.classList.contains('placeholder') ? '' : el.value.trim(); };
+  const defInVal  = getVal('setting-default-in');
+  if (defInVal && toMin(defInVal) !== null) { try { localStorage.setItem(DEFAULT_IN_KEY, toMin(defInVal)); } catch(e) {} }
+  const defOutVal = getVal('setting-default-out');
+  try { (defOutVal && toMin(defOutVal) !== null) ? localStorage.setItem(DEFAULT_OUT_KEY, toMin(defOutVal)) : localStorage.removeItem(DEFAULT_OUT_KEY); } catch(e) {}
+  const friCapVal = getVal('setting-fri-cap');
+  if (friCapVal && toMin(friCapVal) !== null) saveFriCap(toMin(friCapVal));
+  calc();
   closeLinkModal();
 }
 
@@ -1358,30 +1536,53 @@ function updateBusLastRow() {
 
 document.getElementById('bus-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeBusModal(); });
 
+/* ── Setting time inputs ── */
+function wireSettingInp(el) {
+  el.addEventListener('focus', () => {
+    if (el.classList.contains('placeholder')) el.value = '';
+    el.classList.remove('placeholder', 'err');
+  });
+  el.addEventListener('input', () => {
+    el.classList.remove('placeholder', 'err');
+    const raw = el.value.replace(/\D/g, '');
+    if (raw.length >= 3) {
+      el.value = `${raw.slice(0, 2)}:${raw.slice(2, 4)}`;
+    }
+  });
+  el.addEventListener('blur', () => {
+    const val = el.value.trim();
+    if (!val) { el.classList.add('placeholder'); el.value = ''; return; }
+    const parsed = parseTimeInput(val);
+    if (parsed) { el.value = parsed; el.classList.remove('err', 'placeholder'); }
+    else { el.classList.add('err'); }
+  });
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') el.blur(); });
+}
+
+['setting-default-in', 'setting-default-out', 'setting-fri-cap'].forEach(id => {
+  wireSettingInp(document.getElementById(id));
+});
+
 /* ── Bulk ── */
 function openBulkModal() {
-  try {
-    const raw = localStorage.getItem(BULK_KEY);
-    if (raw) {
-      const b = JSON.parse(raw);
-      document.getElementById('bulk-in').value  = b.inV  || '09:00';
-      document.getElementById('bulk-out').value = b.outV || '18:00';
-    }
-  } catch(e) {}
   document.getElementById('bulk-modal').classList.add('open');
 }
 function closeBulkModal() { document.getElementById('bulk-modal').classList.remove('open'); }
 
 function applyBulk() {
-  const inV  = document.getElementById('bulk-in').value;
-  const outV = document.getElementById('bulk-out').value;
-  try { localStorage.setItem(BULK_KEY, JSON.stringify({inV, outV})); } catch(e) {}
+  let defIn = '09:00', defOut = null;
+  try { const r = localStorage.getItem(DEFAULT_IN_KEY);  if (r) defIn  = fmtClock(parseInt(r, 10)); } catch(e) {}
+  try { const r = localStorage.getItem(DEFAULT_OUT_KEY); if (r) defOut = fmtClock(parseInt(r, 10)); } catch(e) {}
   ALL_IDS.forEach(id => {
     const inEl  = document.getElementById(`${id}-in`);
     const outEl = document.getElementById(`${id}-out`);
     const selEl = document.getElementById(`${id}-status`);
-    if (inV)  { inEl.value  = inV;  inEl.classList.remove('placeholder','err'); }
-    if (outV) { outEl.value = outV; outEl.classList.remove('placeholder','err'); }
+    inEl.value  = defIn; inEl.classList.remove('placeholder','err');
+    const autoOut = defOut !== null ? defOut : fmtClock(toMin(defIn) + 8 * 60 + LUNCH_MINS);
+    const noOut = id === 'fri';
+    outEl.value = noOut ? '' : autoOut;
+    if (noOut) outEl.classList.add('placeholder');
+    else outEl.classList.remove('placeholder','err');
     selEl.value = 'normal';
     selEl.className = 'status-sel';
     document.getElementById(`row-${id}`).classList.remove('dimmed');
