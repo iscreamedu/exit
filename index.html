@@ -869,6 +869,22 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
       <span style="font-size:13px;color:var(--ink);flex:1;">금요일 조기퇴근 목표</span>
       <input type="text" class="time-inp" id="setting-fri-cap" placeholder="16:00" inputmode="numeric">
     </div>
+    <hr style="border:none;border-top:1px solid var(--ink-100);margin:16px 0 12px;">
+    <p style="font-size:12px;font-weight:600;color:var(--ink-500);margin-bottom:8px;">기기 연동</p>
+    <p id="sync-off-note" style="font-size:12px;color:var(--ink-400);margin-bottom:4px;">동기화 설정이 없어 이 기기에만 저장돼요.</p>
+    <div id="sync-section" style="display:none;">
+      <div class="modal-row" style="align-items:center;">
+        <span style="font-size:13px;color:var(--ink);flex:1;">내 코드</span>
+        <b id="sync-code-view" style="font-size:13px;letter-spacing:1px;">----</b>
+        <button class="modal-btn" type="button" onclick="copySyncCode()" style="padding:4px 10px;">복사</button>
+      </div>
+      <div class="modal-row" style="align-items:center;">
+        <input type="text" id="sync-code-inp" placeholder="다른 기기 코드 입력" maxlength="9" autocapitalize="characters" onkeydown="if(event.key==='Enter')linkWithCode()" style="flex:1;">
+        <button class="modal-btn" type="button" onclick="linkWithCode()" style="padding:4px 10px;">연동</button>
+      </div>
+      <p style="font-size:11px;color:var(--ink-400);margin-top:2px;">다른 기기(모바일 등)에서 이 코드를 입력하면 데이터가 연동돼요.</p>
+      <p id="sync-status" style="font-size:12px;color:var(--ink-400);margin-top:2px;"></p>
+    </div>
     <div class="modal-actions">
       <button class="modal-btn" onclick="closeLinkModal()">취소</button>
       <button class="modal-btn primary" onclick="saveLinkModal()">저장</button>
@@ -981,6 +997,23 @@ const BULK_KEY    = 'kaltoe_bulk_v1';
 const FRI_CAP_KEY    = 'kaltoe_fri_cap_v1';
 const DEFAULT_IN_KEY  = 'kaltoe_default_in_v1';
 const DEFAULT_OUT_KEY = 'kaltoe_default_out_v1';
+const SYNC_CODE_KEY   = 'kaltoe_sync_code_v1';
+
+/* ── Firebase 설정 (기기 간 동기화) ──
+ * https://console.firebase.google.com 에서
+ * 1) 프로젝트 생성 → 2) 빌드 > Realtime Database 생성 →
+ * 3) 프로젝트 설정 > 웹 앱 추가 후 나오는 firebaseConfig 값을 붙여넣으세요.
+ * databaseURL이 반드시 포함되어야 합니다 (Realtime Database 생성 후 표시됨).
+ * 비워두면 기존처럼 이 기기(localStorage)에만 저장됩니다. */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBfvpzkcEyCjo7BxngP-sMgwGWVPShFqBc",
+  authDomain: "ise-exit.firebaseapp.com",
+  databaseURL: "https://ise-exit-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ise-exit",
+  storageBucket: "ise-exit.firebasestorage.app",
+  messagingSenderId: "122800448406",
+  appId: "1:122800448406:web:56dd7d3bf688f3c0a3f3b7",
+};
 const LUNCH_MINS  = 60;
 const TARGET      = 40 * 60;
 const MAX_CHECKOUT = 21 * 60; // 최대 퇴근 시각 21:00
@@ -1300,6 +1333,7 @@ function getFriCap() {
 }
 function saveFriCap(mins) {
   try { localStorage.setItem(FRI_CAP_KEY, mins); } catch(e) {}
+  cloudSave();
 }
 
 function calcRecommended() {
@@ -1404,6 +1438,7 @@ function saveData() {
     data[`${id}-status`] = document.getElementById(`${id}-status`).value;
   });
   try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch(e) {}
+  cloudSave();
 }
 
 function loadData() {
@@ -1505,6 +1540,7 @@ function saveLinkModal() {
   try { (defOutVal && toMin(defOutVal) !== null) ? localStorage.setItem(DEFAULT_OUT_KEY, toMin(defOutVal)) : localStorage.removeItem(DEFAULT_OUT_KEY); } catch(e) {}
   const friCapVal = getVal('setting-fri-cap');
   if (friCapVal && toMin(friCapVal) !== null) saveFriCap(toMin(friCapVal));
+  cloudSave();
   calc();
   closeLinkModal();
 }
@@ -1611,6 +1647,7 @@ function doReset() {
     document.getElementById(`row-${id}`).classList.remove('dimmed');
   });
   try { localStorage.removeItem(STORE_KEY); } catch(e) {}
+  cloudSave();
   calc();
 }
 
@@ -1883,11 +1920,161 @@ _pasteZone.addEventListener('drop', async e => {
   if (file && file.type.startsWith('image/')) { closeImageModal(); await processImageFile(file); }
 });
 
+/* ── 기기 동기화 (Firebase Realtime DB + 개인 코드) ──
+ * 개인 코드(예: XK7M-2QP9)가 아이디 역할. 첫 접속 시 자동 발급되고,
+ * 다른 기기에서 같은 코드를 입력하면 users/<코드> 경로의 데이터가 실시간 공유됨.
+ * FIREBASE_CONFIG가 비어 있으면 전부 no-op — 기존 localStorage 동작 그대로. */
+let syncRef = null;
+let cloudTimer = null;
+let lastAppliedJson = null; // 마지막으로 푸시/적용한 스냅샷 (자기 변경 에코 방지)
+
+function syncEnabled() { return !!FIREBASE_CONFIG.databaseURL; }
+
+function loadFirebase() {
+  const load = src => new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  return load('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js')
+    .then(() => load('https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js'));
+}
+
+function genSyncCode() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // 헷갈리는 문자(I,L,O,0,1) 제외
+  const buf = new Uint8Array(8);
+  crypto.getRandomValues(buf);
+  let s = '';
+  buf.forEach(b => { s += chars[b % chars.length]; });
+  return `${s.slice(0, 4)}-${s.slice(4)}`;
+}
+
+function stableJson(d) { const c = Object.assign({}, d); delete c.updatedAt; return JSON.stringify(c); }
+
+function setSyncStatus(msg) {
+  const el = document.getElementById('sync-status');
+  if (el) el.textContent = msg;
+}
+
+function buildCloudSnapshot() {
+  const week = {};
+  ALL_IDS.forEach(id => {
+    week[`${id}-in`]     = document.getElementById(`${id}-in`).value;
+    week[`${id}-out`]    = document.getElementById(`${id}-out`).value;
+    week[`${id}-status`] = document.getElementById(`${id}-status`).value;
+  });
+  let links = null;
+  try { links = JSON.parse(localStorage.getItem(LINK_KEY)) || null; } catch(e) {}
+  let defIn = null, defOut = null;
+  try { defIn  = localStorage.getItem(DEFAULT_IN_KEY);  } catch(e) {}
+  try { defOut = localStorage.getItem(DEFAULT_OUT_KEY); } catch(e) {}
+  return { week, links, friCap: getFriCap(), defIn, defOut, updatedAt: Date.now() };
+}
+
+function applyRemote(data) {
+  if (!data) return;
+  try {
+    if (data.week)  localStorage.setItem(STORE_KEY, JSON.stringify(data.week));
+    if (data.links) localStorage.setItem(LINK_KEY,  JSON.stringify(data.links));
+    if (data.friCap != null) localStorage.setItem(FRI_CAP_KEY, data.friCap);
+    if (data.defIn  != null) localStorage.setItem(DEFAULT_IN_KEY, data.defIn);
+    else localStorage.removeItem(DEFAULT_IN_KEY);
+    if (data.defOut != null) localStorage.setItem(DEFAULT_OUT_KEY, data.defOut);
+    else localStorage.removeItem(DEFAULT_OUT_KEY);
+  } catch(e) {}
+  ALL_IDS.forEach(id => document.getElementById(`row-${id}`).classList.remove('dimmed'));
+  loadData();
+  loadLinks();
+  calc();
+}
+
+function cloudSave() {
+  if (!syncRef) return;
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(cloudSaveNow, 600); // 연속 입력 묶어서 저장
+}
+
+function cloudSaveNow() {
+  if (!syncRef) return;
+  const snap = buildCloudSnapshot();
+  lastAppliedJson = stableJson(snap);
+  syncRef.set(snap)
+    .then(() => setSyncStatus('동기화됨 ✓'))
+    .catch(() => setSyncStatus('동기화 실패 — 네트워크를 확인해주세요'));
+}
+
+function startSync(code) {
+  if (syncRef) syncRef.off();
+  syncRef = firebase.database().ref('users/' + code);
+  let first = true;
+  syncRef.on('value', snap => {
+    const remote = snap.val();
+    if (first) {
+      first = false;
+      if (!remote) { cloudSaveNow(); return; } // 새 코드 → 현재 기기 데이터를 업로드
+    }
+    if (!remote) return;
+    const j = stableJson(remote);
+    if (j === lastAppliedJson) return; // 내가 방금 쓴 데이터의 에코
+    lastAppliedJson = j;
+    applyRemote(remote);
+    setSyncStatus('동기화됨 ✓');
+  }, () => setSyncStatus('동기화 연결 실패 — 네트워크를 확인해주세요'));
+}
+
+async function initSync() {
+  if (!syncEnabled()) return;
+  try {
+    await loadFirebase();
+    firebase.initializeApp(FIREBASE_CONFIG);
+    let code = null;
+    try { code = localStorage.getItem(SYNC_CODE_KEY); } catch(e) {}
+    if (!code) {
+      code = genSyncCode();
+      try { localStorage.setItem(SYNC_CODE_KEY, code); } catch(e) {}
+    }
+    document.getElementById('sync-off-note').style.display = 'none';
+    document.getElementById('sync-section').style.display = '';
+    document.getElementById('sync-code-view').textContent = code;
+    startSync(code);
+  } catch(e) {
+    setSyncStatus('동기화 초기화 실패');
+  }
+}
+
+function copySyncCode() {
+  const code = document.getElementById('sync-code-view').textContent;
+  const done = () => setSyncStatus('코드를 복사했어요 — 다른 기기의 연동 칸에 붙여넣으세요');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(done).catch(() => { prompt('아래 코드를 복사하세요', code); });
+  } else {
+    prompt('아래 코드를 복사하세요', code);
+  }
+}
+
+function linkWithCode() {
+  const inp = document.getElementById('sync-code-inp');
+  const v = inp.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (v.length !== 8) { setSyncStatus('코드는 8자리예요 (예: XK7M-2QP9)'); return; }
+  const code = `${v.slice(0, 4)}-${v.slice(4)}`;
+  let cur = null;
+  try { cur = localStorage.getItem(SYNC_CODE_KEY); } catch(e) {}
+  if (code === cur) { setSyncStatus('이미 이 코드로 연동 중이에요'); return; }
+  if (!confirm(`${code} 코드로 연동할까요?\n코드에 저장된 데이터가 있으면 이 기기의 데이터를 대체합니다.`)) return;
+  try { localStorage.setItem(SYNC_CODE_KEY, code); } catch(e) {}
+  lastAppliedJson = null;
+  document.getElementById('sync-code-view').textContent = code;
+  inp.value = '';
+  startSync(code);
+  setSyncStatus('연동 완료 ✓');
+}
+
 /* ── Init ── */
 loadData();
 loadLinks();
 updateBusLastRow();
 calc();
+initSync();
 </script>
 </body>
 </html>
