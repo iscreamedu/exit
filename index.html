@@ -552,6 +552,7 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
 /* design system .theme-chip */
 .bus-filter {
   display: flex;
+  align-items: center;
   gap: 6px;
   margin-bottom: 12px;
 }
@@ -567,6 +568,7 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
   font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
   transition: all .15s;
 }
@@ -622,6 +624,50 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
 
 .bus-table tr.sunbawi td { background: var(--orange-50); color: var(--orange-700); }
 .bus-table tr.sunbawi td.t { color: var(--orange-700); }
+
+/* 현재 시각 기준 다음 버스 네모 표시 / 지난 버스 흐리게 */
+.bus-table tr.bus-now td { font-weight: 700; }
+.bus-table-wrap { position: relative; }
+.bus-table th { z-index: 3; }
+/* 다음 버스 네모: 테이블 위 최상위 레이어 */
+.bus-now-box {
+  position: absolute;
+  left: 4px; right: 4px;
+  border: 2px solid var(--ink-900);
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(31,27,23,.18), 0 2px 4px rgba(31,27,23,.08);
+  pointer-events: none;
+  z-index: 2;
+  display: none;
+  transition: top .2s ease;
+}
+.bus-now-box.show { display: block; }
+.bus-table td.empty { color: var(--ink-400); font-size: 12px; padding: 14px 12px; }
+
+/* 출근/퇴근 토글 (세그먼트) */
+.bus-dir {
+  display: flex;
+  margin-bottom: 10px;
+  padding: 3px;
+  border-radius: var(--r-pill);
+  background: var(--ink-50);
+  border: 1px solid var(--ink-200);
+}
+.bus-dir button {
+  border: none;
+  background: transparent;
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-500);
+  cursor: pointer;
+  transition: all .15s;
+}
+.bus-dir button.active { background: var(--paper); color: var(--ink-900); box-shadow: var(--shadow-md); }
+.bus-table tr.bus-past td { opacity: .35; }
 
 /* ── 근태 캡처 OCR ── */
 #ocr-status {
@@ -900,6 +946,10 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
       <h2>통근버스 시간표<span class="bus-rev">개정 26.04.09</span></h2>
       <button class="modal-close" onclick="closeBusModal()" title="닫기">✕</button>
     </div>
+      <div class="bus-dir">
+        <button data-dir="in" onclick="setBusDir('in')">출근</button>
+        <button data-dir="out" class="active" onclick="setBusDir('out')">퇴근</button>
+      </div>
     <div class="bus-filter">
       <button class="bus-chip active" onclick="filterBus('all', this)">전체</button>
       <button class="bus-chip" onclick="filterBus('yangjae', this)">양재역</button>
@@ -908,9 +958,18 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
     <div class="bus-table-wrap">
       <table class="bus-table">
         <thead>
-          <tr><th>출발</th><th>도착역</th></tr>
+          <tr><th>출발</th><th id="bus-col2">도착역</th></tr>
         </thead>
-        <tbody>
+        <tbody data-dir="in" hidden>
+          <tr class="sunbawi"><td class="t">07:50</td><td>선바위역</td></tr>
+          <tr class="sunbawi"><td class="t">08:00</td><td>선바위역</td></tr>
+          <tr class="sunbawi"><td class="t">08:15</td><td>선바위역</td></tr>
+          <tr class="sunbawi"><td class="t">08:35</td><td>선바위역</td></tr>
+          <tr class="sunbawi"><td class="t">08:45</td><td>선바위역</td></tr>
+          <tr class="sunbawi"><td class="t">09:10</td><td>선바위역</td></tr>
+          <tr><td class="empty" colspan="2">양재역 출근 시간표는 추후 추가됩니다</td></tr>
+        </tbody>
+        <tbody data-dir="out">
           <tr><td class="t">17:10</td><td>양재역</td></tr>
           <tr><td class="t">17:40</td><td>양재역</td></tr>
           <tr class="sunbawi"><td class="t">17:40</td><td>선바위역</td></tr>
@@ -928,6 +987,7 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
           <tr><td class="t">20:10</td><td>양재역</td></tr>
         </tbody>
       </table>
+      <div class="bus-now-box" id="bus-now-box"></div>
     </div>
   </div>
 </div>
@@ -1549,7 +1609,19 @@ function saveLinkModal() {
 document.getElementById('link-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeLinkModal(); });
 
 /* ── Bus timetable ── */
-function openBusModal()  { document.getElementById('bus-modal').classList.add('open'); }
+function openBusModal() {
+  document.getElementById('bus-modal').classList.add('open');
+  setBusDir(new Date().getHours() < 12 ? 'in' : 'out');
+}
+
+// 출근/퇴근 토글
+function setBusDir(dir) {
+  document.querySelectorAll('.bus-dir button').forEach(b => b.classList.toggle('active', b.dataset.dir === dir));
+  document.querySelectorAll('#bus-modal tbody').forEach(tb => tb.hidden = tb.dataset.dir !== dir);
+  document.getElementById('bus-col2').textContent = dir === 'in' ? '출발역' : '도착역';
+  updateBusLastRow();
+  markBusNow(true);
+}
 function closeBusModal() { document.getElementById('bus-modal').classList.remove('open'); }
 
 function filterBus(dest, btn) {
@@ -1561,15 +1633,44 @@ function filterBus(dest, btn) {
     tr.style.display = show ? '' : 'none';
   });
   updateBusLastRow();
+  markBusNow(true);
 }
 
 // 마지막 "표시된" 행의 보더 제거 (필터로 숨겨져도 양식 동일하게)
 function updateBusLastRow() {
-  const rows = [...document.querySelectorAll('#bus-modal tbody tr')];
+  const rows = [...document.querySelectorAll('#bus-modal tbody:not([hidden]) tr')];
   rows.forEach(tr => tr.classList.remove('last-v'));
   const visible = rows.filter(tr => tr.style.display !== 'none');
   if (visible.length) visible[visible.length - 1].classList.add('last-v');
 }
+
+// 현재 시각 기준: 표시된 행 중 다음 버스 네모(최상위 레이어), 지난 버스 흐리게
+function markBusNow(scroll) {
+  const n = new Date(), cur = n.getHours() * 60 + n.getMinutes();
+  const box = document.getElementById('bus-now-box');
+  let next = null, last = null, nextT = null;
+  document.querySelectorAll('#bus-modal tbody tr').forEach(tr => tr.classList.remove('bus-now', 'bus-past'));
+  document.querySelectorAll('#bus-modal tbody:not([hidden]) tr').forEach(tr => {
+    if (tr.style.display === 'none') return;
+    const m = tr.cells[0].textContent.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return;
+    const t = +m[1] * 60 + +m[2];
+    if (t < cur) tr.classList.add('bus-past');
+    else if (!next || t === nextT) { // 같은 시각 버스(양재/선바위 동시 출발)는 한 네모로 묶음
+      if (!next) { next = tr; nextT = t; }
+      last = tr; tr.classList.add('bus-now');
+    }
+  });
+  if (!next) { box.classList.remove('show'); return; }
+  const wrap = box.parentElement;
+  const top = next.getBoundingClientRect().top - wrap.getBoundingClientRect().top + wrap.scrollTop;
+  box.style.top = (top - 1) + 'px';
+  box.style.height = (last.getBoundingClientRect().bottom - next.getBoundingClientRect().top + 2) + 'px';
+  box.classList.add('show');
+  if (scroll) next.scrollIntoView({ block: 'nearest' });
+}
+setInterval(() => { if (document.getElementById('bus-modal').classList.contains('open')) markBusNow(false); }, 30000);
+window.addEventListener('resize', () => { if (document.getElementById('bus-modal').classList.contains('open')) markBusNow(false); });
 
 document.getElementById('bus-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeBusModal(); });
 
