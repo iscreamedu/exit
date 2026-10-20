@@ -878,9 +878,9 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
   <div class="quick-links">
     <button class="tb-btn" onclick="openBusModal()">통근버스</button>
     <div class="tb-sep"></div>
-    <a class="tb-btn" id="btn-jira" href="#" target="_blank"><span id="label-jira">지라</span></a>
-    <a class="tb-btn" id="btn-bus"  href="#" target="_blank"><span id="label-bus">버스</span></a>
-    <a class="tb-btn" id="btn-ehr"  href="#" target="_blank"><span id="label-ehr">eHR</span></a>
+    <a class="tb-btn" id="btn-jira" href="https://jira.i-screamedu.com/secure/Dashboard.jspa" target="_blank"><span id="label-jira">지라</span></a>
+    <a class="tb-btn" id="btn-bus"  href="https://kko.to/RwzLbGWG1V" target="_blank"><span id="label-bus">버스</span></a>
+    <a class="tb-btn" id="btn-ehr"  href="https://ehr.i-screamedu.co.kr/" target="_blank"><span id="label-ehr">eHR</span></a>
     <div class="tb-sep"></div>
     <button class="tb-btn btn-img-upload" onclick="openImageModal()">이미지 업로드</button>
     <input type="file" id="img-upload" accept="image/*" style="display:none">
@@ -1532,6 +1532,13 @@ function loadData() {
 }
 
 /* ── Links ── */
+// 기본 바로가기 (설정에서 비워 두면 이 주소 사용)
+const DEFAULT_LINKS = {
+  jira: 'https://jira.i-screamedu.com/secure/Dashboard.jspa',
+  bus:  'https://kko.to/RwzLbGWG1V',
+  ehr:  'https://ehr.i-screamedu.co.kr/',
+};
+
 function loadLinks() {
   try {
     const raw = localStorage.getItem(LINK_KEY);
@@ -1547,13 +1554,16 @@ function loadLinks() {
 }
 
 function openLinkModal() {
+  document.getElementById('link-jira').value = DEFAULT_LINKS.jira;
+  document.getElementById('link-bus').value  = DEFAULT_LINKS.bus;
+  document.getElementById('link-ehr').value  = DEFAULT_LINKS.ehr;
   try {
     const raw = localStorage.getItem(LINK_KEY);
     if (raw) {
       const l = JSON.parse(raw);
-      document.getElementById('link-jira').value  = l.jira     || '';
-      document.getElementById('link-bus').value   = l.bus      || '';
-      document.getElementById('link-ehr').value   = l.ehr      || '';
+      document.getElementById('link-jira').value  = l.jira     || DEFAULT_LINKS.jira;
+      document.getElementById('link-bus').value   = l.bus      || DEFAULT_LINKS.bus;
+      document.getElementById('link-ehr').value   = l.ehr      || DEFAULT_LINKS.ehr;
       document.getElementById('lname-jira').value = l.nameJira || '';
       document.getElementById('lname-bus').value  = l.nameBus  || '';
       document.getElementById('lname-ehr').value  = l.nameEhr  || '';
@@ -1587,9 +1597,9 @@ function saveLinkModal() {
     nameEhr:  document.getElementById('lname-ehr').value.trim(),
   };
   try { localStorage.setItem(LINK_KEY, JSON.stringify(l)); } catch(e) {}
-  if (l.jira) document.getElementById('btn-jira').href = l.jira;
-  if (l.bus)  document.getElementById('btn-bus').href  = l.bus;
-  if (l.ehr)  document.getElementById('btn-ehr').href  = l.ehr;
+  document.getElementById('btn-jira').href = l.jira || DEFAULT_LINKS.jira;
+  document.getElementById('btn-bus').href  = l.bus  || DEFAULT_LINKS.bus;
+  document.getElementById('btn-ehr').href  = l.ehr  || DEFAULT_LINKS.ehr;
   document.getElementById('label-jira').textContent = l.nameJira || '지라';
   document.getElementById('label-bus').textContent  = l.nameBus  || '버스';
   document.getElementById('label-ehr').textContent  = l.nameEhr  || 'eHR';
