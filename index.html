@@ -2180,7 +2180,10 @@ async function initSync() {
     document.getElementById('sync-code-view').textContent = code;
     startSync(code);
   } catch(e) {
-    setSyncStatus('동기화 초기화 실패');
+    // 스크립트 차단(확장 프로그램·사내망) 등으로 실패하면 이유를 그대로 보여줌
+    const note = document.getElementById('sync-off-note');
+    note.textContent = '동기화 서버에 연결하지 못했어요 (광고 차단 확장 프로그램이나 네트워크를 확인한 뒤 새로고침해 주세요). 지금은 이 기기에만 저장돼요.';
+    console.error('sync init failed', e);
   }
 }
 
