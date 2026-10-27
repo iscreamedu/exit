@@ -484,6 +484,10 @@ input[type="text"].time-inp.err { border-color: var(--danger); color: var(--dang
 }
 #bus-modal .modal,
 #bulk-modal .modal { max-height: calc(92dvh - 16px); }
+/* 시간표 팝업: 팝업은 고정, 표만 스크롤 (이중 스크롤 방지) */
+#bus-modal .modal { display: flex; flex-direction: column; overflow: hidden; }
+#bus-modal .modal > * { flex-shrink: 0; }
+#bus-modal .bus-table-wrap { flex: 0 1 auto; min-height: 0; max-height: none; }
 #imgupload-modal .modal { max-height: calc(94dvh - 16px); }
 
 .modal-head {
